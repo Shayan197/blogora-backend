@@ -1,2 +1,11 @@
+import '@/models/auth/profile.model.js';
 import '@/models/auth/role.model.js';
 import '@/models/auth/user.model.js';
+import '@/models/blog/blog.model.js';
+import '@/models/blog/blogTag.model.js';
+import '@/models/blog/category.model.js';
+import '@/models/blog/comment.model.js';
+import '@/models/blog/image.model.js';
+import '@/models/blog/like.model.js';
+import '@/models/blog/tag.model.js';
+import '@/models/notification/notification.model.js';

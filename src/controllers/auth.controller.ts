@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 
 import sequelize from '@/config/db.config.js';
+import { nodeEnv } from '@/config/initial.config.js';
 import User from '@/models/auth/user.model.js';
 import { sentOTPEmail } from '@/utils/email.util.js';
 import { generateAccessToken, generateRefreshToken } from '@/utils/jwt.utils.js';
@@ -222,9 +223,6 @@ export const loginUser = async (req: Request, res: Response) => {
         });
         if (!user) return validationError(res, 'Invalid Credentials - User not found');
 
-        // Account is already logged in
-        if (user.isActive) return validationError(res, 'User is already logged in.');
-
         //check if user is not active then send otp to verify
         if (user.status === 'pending') {
             user.otp = crypto.randomInt(100000, 999999);
@@ -256,17 +254,19 @@ export const loginUser = async (req: Request, res: Response) => {
         user.isActive = true;
         await user.save({ fields: ['loginCount', 'lastLogin', 'isActive'] });
 
+        const isProd = nodeEnv === 'production';
+
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'strict',
-            path: '/api',
+            secure: isProd,
+            sameSite: 'lax',
+            path: '/',
             maxAge: 24 * 60 * 60 * 1000,
         });
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'strict',
+            secure: isProd,
+            sameSite: 'lax',
             path: '/api/auth/token-refresh',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -285,24 +285,29 @@ export const regenerateAccessToken = async (req: Request, res: Response) => {
             attributes: ['status', 'isActive', 'isVerified'],
         });
         if (!user) return unauthorizedError(res, 'Invalid token');
-        if (user.status !== 'active' || !user.isActive || !user.isVerified) {
+        if (user.status !== 'active' || !user.isVerified) {
             return unauthorizedError(res, 'Token is not valid. Please login again.');
         }
+
+        user.isActive = true;
+        await user.save({ fields: ['isActive'] });
 
         const accessToken = generateAccessToken({ uuid: req.userUid! });
         const refreshToken = generateRefreshToken({ uuid: req.userUid! });
 
+        const isProd = nodeEnv === 'production';
+
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'strict',
-            path: '/api',
+            secure: isProd,
+            sameSite: 'lax',
+            path: '/',
             maxAge: 24 * 60 * 60 * 1000,
         });
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'strict',
+            secure: isProd,
+            sameSite: 'lax',
             path: '/api/auth/token-refresh',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -321,16 +326,18 @@ export const logoutUser = async (req: Request, res: Response) => {
         user.isActive = false;
         await user.save({ fields: ['isActive'] });
 
+        const isProd = nodeEnv === 'production';
+
         res.clearCookie('accessToken', {
             httpOnly: true,
-            secure: false,
-            sameSite: 'strict',
-            path: '/api',
+            secure: isProd,
+            sameSite: 'lax',
+            path: '/',
         });
         res.clearCookie('refreshToken', {
             httpOnly: true,
-            secure: false,
-            sameSite: 'strict',
+            secure: isProd,
+            sameSite: 'lax',
             path: '/api/auth/token-refresh',
         });
 

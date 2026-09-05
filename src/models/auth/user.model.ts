@@ -2,6 +2,8 @@ import { DataTypes, Model } from 'sequelize';
 import { v7 as uuidv7 } from 'uuid';
 
 import sequelize from '@/config/db.config.js';
+import type Profile from '@/models/auth/profile.model.js';
+import type Role from '@/models/auth/role.model.js';
 
 class User extends Model {
     declare id: number;
@@ -28,6 +30,11 @@ class User extends Model {
     declare otp: number | null;
     declare otpCount: number;
     declare fullName: string;
+    declare role?: Role;
+    declare profile?: Profile;
+    declare readonly createdAt: Date;
+    declare readonly updatedAt: Date;
+    declare readonly deletedAt: Date | null;
 }
 
 User.init(

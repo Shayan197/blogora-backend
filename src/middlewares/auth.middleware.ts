@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 
 import { jwtVerifier } from '@/config/jwt.config.js';
+import Role from '@/models/auth/role.model.js';
 import User from '@/models/auth/user.model.js';
 import { unauthorizedError, forbiddenError } from '@/utils/response.util.js';
 
@@ -15,7 +16,7 @@ export const verifyToken = async (
     try {
         const accessToken = req.cookies.accessToken as string | undefined;
         if (!accessToken) {
-            unauthorizedError(res, 'No access token, authorization denaid');
+            unauthorizedError(res, 'No access token, authorization denied');
             return;
         }
 
@@ -40,7 +41,7 @@ export const verifyRefreshToken = async (
     try {
         const refreshToken = req.cookies.refreshToken as string | undefined;
         if (!refreshToken) {
-            unauthorizedError(res, 'No refresh token, authorization denaid');
+            unauthorizedError(res, 'No refresh token, authorization denied');
             return;
         }
 
@@ -64,7 +65,10 @@ export const VerifyTokenNSetUser = async (
 ): Promise<void> => {
     try {
         const uuid = req.userUid;
-        const user = await User.findOne({ where: { uuid } });
+        const user = await User.findOne({
+            where: { uuid },
+            include: [{ model: Role, as: 'role' }],
+        });
         if (!user) {
             unauthorizedError(res, 'Invalid token');
             return;
@@ -78,4 +82,57 @@ export const VerifyTokenNSetUser = async (
     } catch (_error) {
         unauthorizedError(res, 'Invalid token');
     }
+};
+
+// =================== Authorize Roles ======================
+export const authorizeRoles = (...allowedRoles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction): void => {
+        if (!req.user || !req.user.role) {
+            forbiddenError(res, 'Access denied. Role information missing.');
+            return;
+        }
+        const userRoleSlug = req.user.role.slug?.toLowerCase();
+        const userRoleName = req.user.role.name?.toLowerCase();
+
+        const isAllowed = allowedRoles.some((role) => {
+            const normalized = role.toLowerCase();
+            return normalized === userRoleSlug || normalized === userRoleName;
+        });
+
+        if (!isAllowed) {
+            forbiddenError(
+                res,
+                'Access denied. You do not have permission to perform this action.',
+            );
+            return;
+        }
+        next();
+    };
+};
+
+// =================== Optional Auth ======================
+export const optionalAuth = async (
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+): Promise<void> => {
+    try {
+        const accessToken = req.cookies.accessToken as string | undefined;
+        if (accessToken) {
+            const decode = jwtVerifier(accessToken);
+            if (decode && decode.token === 'access') {
+                req.userUid = decode.userUid;
+                const user = await User.findOne({
+                    where: { uuid: decode.userUid },
+                    include: [{ model: Role, as: 'role' }],
+                });
+                if (user && user.isActive) {
+                    req.user = user;
+                }
+            }
+        }
+    } catch (_error) {
+        // Silently continue without setting req.user
+    }
+    next();
 };

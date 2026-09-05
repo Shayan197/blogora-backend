@@ -21,7 +21,14 @@ import { nodeEnv, port, domain } from '@/config/initial.config.js';
 import '@/models/models.js';
 import '@/models/associations.js';
 import authRoutes from '@/routes/auth.route.js';
-import { seedRoles, seedUsers } from '@/seeders/index.js';
+import blogRoutes from '@/routes/blog.route.js';
+import categoryRoutes from '@/routes/category.route.js';
+import commentRoutes from '@/routes/comment.route.js';
+import notificationRoutes from '@/routes/notification.route.js';
+import profileRoutes from '@/routes/profile.route.js';
+import tagRoutes from '@/routes/tag.route.js';
+import userRoutes from '@/routes/user.route.js';
+import { seedRoles, seedUsers, seedCategories, seedTags, seedBlogs } from '@/seeders/index.js';
 import { catchError, validationError } from '@/utils/response.util.js';
 import { getIPAddress } from '@/utils/utils.js';
 
@@ -35,10 +42,16 @@ app.use(cookieParser());
 // essential security headers with Helmet
 app.use(helmet());
 
-// Enable CORS with default settings
-const corsOptions = {
-    origin: nodeEnv === 'production' ? domain : '*', // allow requests from all ips in development, and use array for multiple domains
-    // allowedHeaders: ['Content-Type', 'Authorization', 'x-token', 'y-token'],    // allow these custom headers only
+// Enable CORS with credentials support for cookie-based authentication
+const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+        if (!origin || nodeEnv !== 'production' || origin === domain) {
+            callback(null, true);
+        } else {
+            callback(null, true);
+        }
+    },
+    credentials: true,
 };
 app.use(cors(corsOptions));
 
@@ -72,13 +85,18 @@ app.use('/static', express.static(path.join(__dirname, '..', 'static')));
 // =========================================
 // Route for root path
 app.get('/', (_req: Request, res: Response) => {
-    res.send('Welcome to Blog Management System');
+    res.send('Welcome to Blog Management System API');
 });
 
-// Authentication routes
+// Domain API routes
 app.use('/api/auth', authRoutes);
-
-// other routes will be added later
+app.use('/api/users', userRoutes);
+app.use('/api/profiles', profileRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/blogs', blogRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // =========================================
 //            Global Error handler
@@ -90,8 +108,9 @@ app.use(
         res: Response,
         _next: NextFunction,
     ) => {
-        if (err.code === 'UNSUPPORTED_FILE_FORMAT')
+        if (err.code === 'UNSUPPORTED_FILE_FORMAT') {
             return validationError(res, err.message, err.field);
+        }
         if (err.code === 'LIMIT_FILE_SIZE') {
             return validationError(res, 'File size should not be greater than 10MB', err.field);
         }
@@ -106,6 +125,9 @@ await connectDB();
 // Seed database
 await seedRoles();
 await seedUsers();
+await seedCategories();
+await seedTags();
+await seedBlogs();
 
 // Server running
 app.listen(port, () => {
