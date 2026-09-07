@@ -464,3 +464,67 @@ Both backend (`blog-management-system`) and frontend (`next-auth-ts-rtkquery`) a
 | **Frontend ESLint** | Frontend | `npm run lint` | ✅ **0 Errors** |
 | **Frontend Formatting** | Frontend | `npx prettier --write src/` | ✅ **100% Compliant** |
 
+---
+
+## 11. Vercel Build Fix, Cross-Site Auth/Logout Flow, Husky Configuration, and Render.com Production Readiness
+
+### 11.1 Vercel Production Build Failure Resolution (Next.js 16.3.1)
+- **Root Cause**: During Next.js 16.3.1 production build (`next build`), TypeScript compilation failed on:
+  1. `src/app/(protected)/editprofile/page.tsx`: Accessing `user.firstName`, `user.lastName`, `user.email` from `const user = userData?.data`. The `useGetMeQuery()` response signature is `ApiResponse<{ user: UserProfile }>`, making `userData?.data` contain `{ user: UserProfile }` rather than the user object directly.
+  2. `src/components/ui/CommentSection.tsx`: Accessing `currentUser.id` and `currentUser.uuid` from `const currentUser = authData?.data`.
+  3. `src/types/auth.ts`: Missing `uuid?: string`, `avatar?: string | null`, and `roleId?: number` in the `UserProfile` type definition.
+- **Fixes Applied**:
+  - Extended `UserProfile` in `src/types/auth.ts` with `uuid?: string`, `avatar?: string | null`, and `roleId?: number`.
+  - Updated `editprofile/page.tsx` to `const user = userData?.data?.user`.
+  - Updated `CommentSection.tsx` to `const currentUser = authData?.data?.user`, with comprehensive `uuid` and `id` comparison.
+  - Formatted files with Prettier and fixed ESLint `@typescript-eslint/naming-convention` in `authSlice.ts`.
+  - **Verification**: `npm run build` succeeded with code 0 — all 19 routes static and dynamic compiled cleanly.
+
+### 11.2 Auth & Logout Flow Root Cause Fix
+- **Root Cause**: Clicking Sign Out in `Navbar.tsx` redirected to `/login`, but refreshing the browser unexpectedly re-authenticated the user and bounced back to `/homepage` or `/dashboard`.
+  1. `Navbar.tsx` only dispatched client-side Redux actions and cleared localStorage without ever notifying the backend. The backend HttpOnly cookies (`accessToken` and `refreshToken`) remained active in the browser. On page reload, `AuthBootstrap` called `getMe()`, which succeeded using the HttpOnly cookie, re-authenticated the session, and redirected away from login.
+  2. The backend `/api/auth/logout` endpoint was protected with strict `verifyToken` middleware; if the access token was expired, logout failed with 401 Unauthorized, preventing cookies from being cleared.
+  3. The backend `logoutUser` controller attempted to deactivate the user in the database (`user.isActive = false`), disabling the user's account upon logging out.
+- **Fixes Applied**:
+  - Added `logout: builder.mutation<MessageResponse, void>` to `authApi` in `src/redux/services/api/auth/auth.ts` and exported `useLogoutMutation`.
+  - Added `'logout'` to `PUBLIC_ENDPOINTS` in `src/redux/services/apiSlice/publicEndpoints.ts` so logout is never blocked by expired token re-auth loops.
+  - Updated `Navbar.tsx` to call `await logoutRequest().unwrap()` inside `handleLogout` before clearing client-side state.
+  - Updated `auth.route.ts` to use `optionalAuth` on `POST /logout` so cookies are always cleared even if the access token has already expired.
+  - Rewrote `logoutUser` in `auth.controller.ts` to unconditionally clear both `accessToken` (path `/`) and `refreshToken` (path `/api/auth/token-refresh`) cookies, and removed erroneous database mutation `user.isActive = false`.
+  - Standardized cookie options across `loginUser`, `regenerateAccessToken`, and `logoutUser` with `sameSite: isProd ? 'none' : 'lax'`, `secure: isProd`, and `httpOnly: true`.
+  - Updated `authSlice.ts` `expireSession` reducer so `isSessionExpired: true` only triggers if the user was previously authenticated.
+
+### 11.3 Husky Pre-commit Hooks Configuration
+- **Root Cause**: Husky hooks were not executing on git commits in the frontend because `git config core.hooksPath` was uninitialized (exit code 1).
+- **Fix Applied**: Ran `npx husky` in `blogora-frontend` to configure `git config core.hooksPath .husky/_`. Verified that both frontend and backend repositories have active hooks pointing to `.husky/_`.
+
+### 11.4 Backend Production Deployment Readiness (Render.com)
+- **PostgreSQL SSL Support (`src/config/db.config.ts`)**:
+  - Added `dialectOptions.ssl = { require: true, rejectUnauthorized: false }` for production or SSL connection strings.
+- **Resilient Connection URL Parsing (`src/config/initial.config.ts`)**:
+  - Built `buildDatabaseUrl()` to inspect `DATABASE_URL` via the `URL` API. If the connection string already contains the database name (standard on Render, Neon, Supabase, Railway, AWS RDS), it is preserved cleanly without duplicating or appending `DATABASE_NAME`.
+  - Defaulted `port` to `Number(process.env.PORT) || 5000` so Render's assigned dynamic port is honored without error.
+  - Parsed `DOMAIN` into `allowedOrigins: string[]` to support multiple comma-separated frontend domains and handle trailing slashes.
+- **CORS Handling (`src/app.ts`)**:
+  - Updated CORS options to check `allowedOrigins` and localhost in development. Rejected origins now receive `callback(null, false)` instead of throwing unhandled 500 exceptions.
+- **Graceful Shutdown (`src/app.ts`)**:
+  - Implemented `SIGTERM` and `SIGINT` handlers that close the Express HTTP server, await `sequelize.close()`, and exit cleanly with a 10-second timeout fallback.
+- **Database Seeder CLI (`src/seeders/runner.ts`)**:
+  - Created standalone CLI runner script `src/seeders/runner.ts` and registered `"seed": "tsx src/seeders/runner.ts"` in `package.json` so database seeders can be triggered on demand or via Render build/release commands.
+- **Node Engine Compatibility (`package.json`)**:
+  - Relaxed `engines.node` from strict `"24.16.0"` to `">=20.0.0"` in `blogora-backend/package.json` to prevent deployment rejection on cloud platforms running Node 20 or 22 LTS.
+- **Environment Documentation (`.env.example`)**:
+  - Created comprehensive `blogora-backend/.env.example` detailing all required variables, cloud connection string formats, and CORS configurations.
+  - Updated `blogora-frontend/.env.example` with local development port 5000 fallback and production Render URL instructions.
+
+### 11.5 Final Verification Matrix
+
+| Verification Check | Repository | Command / Tool | Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend Production Build** | `blogora-frontend` | `npm run build` | ✅ **Success (19/19 routes compiled, 0 errors)** |
+| **Frontend Linting** | `blogora-frontend` | `npm run lint` | ✅ **0 Errors** |
+| **Backend TypeScript Build** | `blogora-backend` | `npm run build` | ✅ **Success (tsc & tsc-alias, 0 errors)** |
+| **Backend Linting** | `blogora-backend` | `npm run lint` | ✅ **0 Errors** |
+| **Git Hooks Configuration** | Both Repos | `git config --get core.hooksPath` | ✅ **`.husky/_` active on both** |
+
+

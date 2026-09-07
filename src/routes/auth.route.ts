@@ -2,7 +2,7 @@
 import express from 'express';
 
 import * as authCtrl from '@/controllers/auth.controller.js';
-import { verifyToken, verifyRefreshToken } from '@/middlewares/auth.middleware.js';
+import { verifyToken, verifyRefreshToken, optionalAuth } from '@/middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ router.post('/otp-resend', authCtrl.resendOtp);
 
 router.post('/login', authCtrl.loginUser);
 
-router.post('/logout', verifyToken, authCtrl.logoutUser);
+router.post('/logout', optionalAuth, authCtrl.logoutUser);
 
 router.post('/token-refresh', verifyRefreshToken, authCtrl.regenerateAccessToken);
 

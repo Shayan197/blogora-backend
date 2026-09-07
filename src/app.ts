@@ -16,8 +16,8 @@ import morgan from 'morgan';
 // =========================================
 //             Code Imports
 // =========================================
-import { connectDB } from '@/config/db.config.js';
-import { nodeEnv, port, domain } from '@/config/initial.config.js';
+import sequelize, { connectDB } from '@/config/db.config.js';
+import { nodeEnv, port, allowedOrigins } from '@/config/initial.config.js';
 import '@/models/models.js';
 import '@/models/associations.js';
 import authRoutes from '@/routes/auth.route.js';
@@ -28,9 +28,9 @@ import notificationRoutes from '@/routes/notification.route.js';
 import profileRoutes from '@/routes/profile.route.js';
 import tagRoutes from '@/routes/tag.route.js';
 import userRoutes from '@/routes/user.route.js';
-import { seedRoles, seedUsers, seedCategories, seedTags, seedBlogs } from '@/seeders/index.js';
+// import { seedRoles, seedUsers, seedCategories, seedTags, seedBlogs } from '@/seeders/index.js';
 import { catchError, validationError } from '@/utils/response.util.js';
-import { getIPAddress } from '@/utils/utils.js';
+// import { getIPAddress } from '@/utils/utils.js';
 
 // =========================================
 //            configuration
@@ -45,10 +45,21 @@ app.use(helmet());
 // Enable CORS with credentials support for cookie-based authentication
 const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
-        if (!origin || nodeEnv !== 'production' || origin === domain) {
+        // Allow requests without origin (like mobile apps, curl, server-to-server)
+        if (!origin) {
+            return callback(null, true);
+        }
+        const normalizedOrigin = origin.replace(/\/$/, '');
+        const isAllowed =
+            allowedOrigins.includes(normalizedOrigin) ||
+            (nodeEnv !== 'production' &&
+                (normalizedOrigin.startsWith('http://localhost:') ||
+                    normalizedOrigin.startsWith('http://127.0.0.1:')));
+
+        if (isAllowed) {
             callback(null, true);
         } else {
-            callback(null, true);
+            callback(null, false);
         }
     },
     credentials: true,
@@ -85,7 +96,14 @@ app.use('/static', express.static(path.join(__dirname, '..', 'static')));
 // =========================================
 // Route for root path
 app.get('/', (_req: Request, res: Response) => {
-    res.send('Welcome to Blog Management System API');
+    res.send('Welcome to Blogora - Blogging Platform API');
+});
+
+app.get('/health', (_req: Request, res: Response) => {
+    res.status(200).json({
+        success: true,
+        message: 'Blogora - Blogging Platform API is healthy',
+    });
 });
 
 // Domain API routes
@@ -123,15 +141,38 @@ app.use(
 await connectDB();
 
 // Seed database
-await seedRoles();
-await seedUsers();
-await seedCategories();
-await seedTags();
-await seedBlogs();
+// await seedRoles();
+// await seedUsers();
+// await seedCategories();
+// await seedTags();
+// await seedBlogs();
 
 // Server running
-app.listen(port, () => {
-    console.log(
-        chalk.bgYellow.bold(` 🚀 Server is listening at http://${getIPAddress()}:${port} `),
-    );
+const server = app.listen(port, '0.0.0.0', () => {
+    console.log(chalk.bgYellow.bold(` 🚀 Server is listening at ${port} `));
 });
+
+// Graceful shutdown handling for cloud environments (Render, Docker, Kubernetes)
+const gracefulShutdown = (signal: string) => {
+    console.log(chalk.yellow(`\nReceived ${signal}. Starting graceful shutdown...`));
+    server.close(async () => {
+        console.log(chalk.yellow('HTTP server closed. Closing database connection...'));
+        try {
+            await sequelize.close();
+            console.log(chalk.green('Database connection closed. Exiting process cleanly.'));
+            process.exit(0);
+        } catch (err) {
+            console.error(chalk.red('Error during database disconnection:'), err);
+            process.exit(1);
+        }
+    });
+
+    // Force exit if cleanup takes longer than 10 seconds
+    setTimeout(() => {
+        console.error(chalk.red('Forcefully shutting down due to timeout.'));
+        process.exit(1);
+    }, 10000).unref();
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

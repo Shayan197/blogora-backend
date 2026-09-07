@@ -255,18 +255,19 @@ export const loginUser = async (req: Request, res: Response) => {
         await user.save({ fields: ['loginCount', 'lastLogin', 'isActive'] });
 
         const isProd = nodeEnv === 'production';
+        const cookieSameSite = (isProd ? 'none' : 'lax') as 'none' | 'lax';
 
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: cookieSameSite,
             path: '/',
             maxAge: 24 * 60 * 60 * 1000,
         });
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: cookieSameSite,
             path: '/api/auth/token-refresh',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -296,18 +297,19 @@ export const regenerateAccessToken = async (req: Request, res: Response) => {
         const refreshToken = generateRefreshToken({ uuid: req.userUid! });
 
         const isProd = nodeEnv === 'production';
+        const cookieSameSite = (isProd ? 'none' : 'lax') as 'none' | 'lax';
 
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: cookieSameSite,
             path: '/',
             maxAge: 24 * 60 * 60 * 1000,
         });
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: cookieSameSite,
             path: '/api/auth/token-refresh',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -321,23 +323,19 @@ export const regenerateAccessToken = async (req: Request, res: Response) => {
 // =================================== logoutUser ====================================
 export const logoutUser = async (req: Request, res: Response) => {
     try {
-        const user = await User.findOne({ where: { uuid: req.userUid } });
-        if (!user) return unauthorizedError(res, 'User not found');
-        user.isActive = false;
-        await user.save({ fields: ['isActive'] });
-
         const isProd = nodeEnv === 'production';
+        const cookieSameSite = (isProd ? 'none' : 'lax') as 'none' | 'lax';
 
         res.clearCookie('accessToken', {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: cookieSameSite,
             path: '/',
         });
         res.clearCookie('refreshToken', {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: cookieSameSite,
             path: '/api/auth/token-refresh',
         });
 

@@ -25,6 +25,16 @@ const sequelize = new Sequelize(dbUrl, {
     dialectOptions: {
         connectTimeout: 60000,
         timezone: 'Asia/Karachi',
+        ...(nodeEnv === 'production' ||
+        dbUrl.includes('sslmode=require') ||
+        dbUrl.includes('ssl=true')
+            ? {
+                  ssl: {
+                      require: true,
+                      rejectUnauthorized: false,
+                  },
+              }
+            : {}),
     },
     pool: {
         max: 5,
