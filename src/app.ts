@@ -37,10 +37,16 @@ import { catchError, validationError } from '@/utils/response.util.js';
 // =========================================
 
 const app = express();
+
+app.set('trust proxy', 1);
+
 app.use(cookieParser());
 
 // essential security headers with Helmet
 app.use(helmet());
+
+console.log('🌐 NODE_ENV:', nodeEnv);
+console.log('🌐 Allowed Origins:', allowedOrigins);
 
 // Enable CORS with credentials support for cookie-based authentication
 const corsOptions: cors.CorsOptions = {
@@ -57,8 +63,10 @@ const corsOptions: cors.CorsOptions = {
                     normalizedOrigin.startsWith('http://127.0.0.1:')));
 
         if (isAllowed) {
+            console.log(`✅ CORS Allowed: ${normalizedOrigin}`);
             callback(null, true);
         } else {
+            console.log(`❌ CORS Denied: ${normalizedOrigin}`);
             callback(null, false);
         }
     },
