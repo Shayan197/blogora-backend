@@ -15,12 +15,17 @@ import {
     successOkWithData,
     unauthorizedError,
 } from '@/utils/response.util.js';
+import { isValidUuid } from '@/utils/utils.js';
 
 // =================================== toggleLike ===================================
 export const toggleLike = async (req: Request, res: Response) => {
     const { blogUuid } = req.params;
     if (!req.user) {
         return unauthorizedError(res, 'Authentication required');
+    }
+
+    if (!isValidUuid(blogUuid)) {
+        return notFound(res, 'Blog story not found');
     }
 
     const blog = await Blog.findOne({ where: { uuid: blogUuid } });
@@ -92,6 +97,10 @@ export const toggleLike = async (req: Request, res: Response) => {
 export const getBlogLikers = async (req: Request, res: Response) => {
     try {
         const { blogUuid } = req.params;
+        if (!isValidUuid(blogUuid)) {
+            return notFound(res, 'Blog story not found');
+        }
+
         const blog = await Blog.findOne({ where: { uuid: blogUuid } });
         if (!blog) {
             return notFound(res, 'Blog story not found');

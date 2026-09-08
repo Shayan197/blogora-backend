@@ -37,14 +37,18 @@ const buildDatabaseUrl = (): string => {
 
     try {
         const parsed = new URL(rawUrl);
+        // Automatically append .oregon-postgres.render.com if Render internal host is used outside Render network
+        if (/^dpg-[a-z0-9]+-[a-z]$/i.test(parsed.hostname)) {
+            parsed.hostname = `${parsed.hostname}.oregon-postgres.render.com`;
+        }
         if (parsed.pathname && parsed.pathname !== '/' && parsed.pathname.length > 1) {
-            return rawUrl;
+            return parsed.toString();
         }
         if (rawDbName) {
             parsed.pathname = `/${rawDbName}`;
             return parsed.toString();
         }
-        return rawUrl;
+        return parsed.toString();
     } catch {
         if (rawDbName && !rawUrl.endsWith(rawDbName)) {
             return rawUrl.endsWith('/') ? `${rawUrl}${rawDbName}` : `${rawUrl}/${rawDbName}`;
@@ -59,10 +63,20 @@ const jwtSecret: string = process.env.JWT_SECRET_KEY;
 
 const domain: string = process.env.DOMAIN || 'http://localhost:3000';
 
-const allowedOrigins: string[] = domain
+const parsedOrigins = domain
     .split(',')
     .map((origin) => origin.trim().replace(/\/$/, ''))
     .filter(Boolean);
+
+// Always ensure local development origins are permitted
+const defaultLocalOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+for (const origin of defaultLocalOrigins) {
+    if (!parsedOrigins.includes(origin)) {
+        parsedOrigins.push(origin);
+    }
+}
+
+const allowedOrigins: string[] = parsedOrigins;
 
 // ==========================================================
 //                Email Configuration

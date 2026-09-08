@@ -19,11 +19,15 @@ import {
     unauthorizedError,
     validationError,
 } from '@/utils/response.util.js';
+import { isValidUuid } from '@/utils/utils.js';
 
 // =================================== getBlogComments ===================================
 export const getBlogComments = async (req: Request, res: Response) => {
     try {
         const { blogUuid } = req.params;
+        if (!isValidUuid(blogUuid)) {
+            return notFound(res, 'Blog story not found');
+        }
 
         const blog = await Blog.findOne({ where: { uuid: blogUuid } });
         if (!blog) {
@@ -93,6 +97,10 @@ export const createComment = async (req: Request, res: Response) => {
     const { blogUuid } = req.params;
     if (!req.user) {
         return unauthorizedError(res, 'Authentication required');
+    }
+
+    if (!isValidUuid(blogUuid)) {
+        return notFound(res, 'Blog story not found');
     }
 
     const reqBody = bodyReqFields(req, res, ['content']);

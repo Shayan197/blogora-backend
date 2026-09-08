@@ -232,7 +232,8 @@ const sequelizeFrontError = (res: Response, error: SequelizeErrorLike | Sequeliz
 // ========================= catchError ===========================
 
 const catchError = (res: Response, _error: unknown) => {
-    return res.status(500).send({
+    console.error('[Internal Server Error in Controller]:', _error);
+    return res.status(500).json({
         success: false,
         type: 'backend',
         error: { message: 'internal server error' },

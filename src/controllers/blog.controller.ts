@@ -25,7 +25,7 @@ import {
     validationError,
 } from '@/utils/response.util.js';
 import { generateSlug } from '@/utils/slug.util.js';
-import { extractFieldsToUpdate } from '@/utils/utils.js';
+import { extractFieldsToUpdate, isValidUuid } from '@/utils/utils.js';
 
 // =================================== listBlogs (Public Feed) ===================================
 export const listBlogs = async (req: Request, res: Response) => {
@@ -225,12 +225,18 @@ export const getTrendingBlogs = async (_req: Request, res: Response) => {
 // =================================== getBlogBySlug (Read View) ===================================
 export const getBlogBySlug = async (req: Request, res: Response) => {
     try {
-        const { slugOrUuid } = req.params;
+        const rawSlugOrUuid = req.params.slugOrUuid;
+        const slugOrUuid = Array.isArray(rawSlugOrUuid) ? rawSlugOrUuid[0] : rawSlugOrUuid;
+
+        if (!slugOrUuid) {
+            return notFound(res, 'Blog story not found');
+        }
+
+        const isUuid = isValidUuid(slugOrUuid);
+        const whereClause = isUuid ? { uuid: slugOrUuid } : { slug: slugOrUuid };
 
         const blog = await Blog.findOne({
-            where: {
-                [Op.or]: [{ slug: slugOrUuid }, { uuid: slugOrUuid }],
-            },
+            where: whereClause,
             include: [
                 {
                     model: User,
@@ -468,6 +474,10 @@ export const updateBlog = async (req: Request, res: Response) => {
         return unauthorizedError(res, 'Authentication required');
     }
 
+    if (!isValidUuid(uuid)) {
+        return notFound(res, 'Blog story not found');
+    }
+
     const blog = await Blog.findOne({ where: { uuid } });
     if (!blog) {
         return notFound(res, 'Blog story not found');
@@ -598,6 +608,10 @@ export const deleteBlog = async (req: Request, res: Response) => {
             return unauthorizedError(res, 'Authentication required');
         }
 
+        if (!isValidUuid(uuid)) {
+            return notFound(res, 'Blog story not found');
+        }
+
         const blog = await Blog.findOne({ where: { uuid } });
         if (!blog) {
             return notFound(res, 'Blog story not found');
@@ -622,6 +636,10 @@ export const togglePublishStatus = async (req: Request, res: Response) => {
         const { uuid } = req.params;
         if (!req.user) {
             return unauthorizedError(res, 'Authentication required');
+        }
+
+        if (!isValidUuid(uuid)) {
+            return notFound(res, 'Blog story not found');
         }
 
         const blog = await Blog.findOne({ where: { uuid } });
