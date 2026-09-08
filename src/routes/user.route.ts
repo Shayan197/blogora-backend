@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(verifyToken, VerifyTokenNSetUser);
 
 router.get('/', authorizeRoles('super-admin', 'admin'), userCtrl.listUsers);
+router.get('/roles', authorizeRoles('super-admin', 'admin'), userCtrl.listRoles);
 router.get('/:uuid', authorizeRoles('super-admin', 'admin'), userCtrl.getUserByUuid);
 router.patch('/:uuid/role', authorizeRoles('super-admin'), userCtrl.updateUserRole);
 router.patch('/:uuid/status', authorizeRoles('super-admin', 'admin'), userCtrl.updateUserStatus);

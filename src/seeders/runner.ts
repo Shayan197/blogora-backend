@@ -13,19 +13,19 @@ const runAllSeeders = async () => {
         console.log(chalk.cyan.bold('\nStarting database seeding...'));
 
         console.log(chalk.blue('Seeding roles...'));
-        await seedRoles();
+        const roleMap = await seedRoles();
 
         console.log(chalk.blue('Seeding users...'));
-        await seedUsers();
+        const userMap = await seedUsers(roleMap);
 
         console.log(chalk.blue('Seeding categories...'));
-        await seedCategories();
+        const categoryMap = await seedCategories();
 
         console.log(chalk.blue('Seeding tags...'));
-        await seedTags();
+        const tagMap = await seedTags();
 
         console.log(chalk.blue('Seeding blogs...'));
-        await seedBlogs();
+        await seedBlogs(userMap, categoryMap, tagMap);
 
         console.log(chalk.green.bold('\nAll seeders executed successfully!'));
         await sequelize.close();

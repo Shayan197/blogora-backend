@@ -1,6 +1,6 @@
 import Category from '@/models/blog/category.model.js';
 
-export const seedCategories = async (): Promise<void> => {
+export const seedCategories = async (): Promise<Map<string, Category>> => {
     const categories = [
         {
             name: 'Software Engineering',
@@ -54,8 +54,19 @@ export const seedCategories = async (): Promise<void> => {
         },
     ];
 
-    await Category.bulkCreate(categories as unknown as Partial<Category>[], {
-        ignoreDuplicates: true,
-    });
-    console.log('Categories seeded successfully');
+    for (const c of categories) {
+        const existing = await Category.findOne({ where: { slug: c.slug } });
+        if (!existing) {
+            await Category.create(c);
+        }
+    }
+
+    const allCategories = await Category.findAll();
+    const categoryMap = new Map<string, Category>();
+    for (const c of allCategories) {
+        categoryMap.set(c.slug, c);
+    }
+
+    console.log(`Categories seeded successfully (${allCategories.length} categories available)`);
+    return categoryMap;
 };

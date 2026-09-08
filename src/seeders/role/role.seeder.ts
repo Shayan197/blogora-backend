@@ -1,6 +1,6 @@
 import Role from '@/models/auth/role.model.js';
 
-export const seedRoles = async (): Promise<void> => {
+export const seedRoles = async (): Promise<Map<string, Role>> => {
     const roles = [
         {
             name: 'Super Admin',
@@ -10,6 +10,7 @@ export const seedRoles = async (): Promise<void> => {
             color: '#ff0000',
             icon: 'sheild',
             isSystem: true,
+            isActive: true,
         },
         {
             name: 'Admin',
@@ -19,6 +20,7 @@ export const seedRoles = async (): Promise<void> => {
             color: '#ff8800',
             icon: 'admin',
             isSystem: true,
+            isActive: true,
         },
         {
             name: 'Editor',
@@ -28,6 +30,7 @@ export const seedRoles = async (): Promise<void> => {
             color: '#00aa00',
             icon: 'edit',
             isSystem: true,
+            isActive: true,
         },
         {
             name: 'Author',
@@ -37,6 +40,7 @@ export const seedRoles = async (): Promise<void> => {
             color: '#0066ff',
             icon: 'pen-to-square',
             isSystem: true,
+            isActive: true,
         },
         {
             name: 'Moderator',
@@ -46,6 +50,7 @@ export const seedRoles = async (): Promise<void> => {
             color: '#9900cc',
             icon: 'message',
             isSystem: true,
+            isActive: true,
         },
         {
             name: 'Subscriber',
@@ -55,10 +60,23 @@ export const seedRoles = async (): Promise<void> => {
             color: '#666666',
             icon: 'user',
             isSystem: true,
+            isActive: true,
         },
     ];
-    await Role.bulkCreate(roles, {
-        ignoreDuplicates: true,
-    });
-    console.log('Role seeded successfully');
+
+    for (const r of roles) {
+        const existing = await Role.findOne({ where: { slug: r.slug } });
+        if (!existing) {
+            await Role.create(r);
+        }
+    }
+
+    const allRoles = await Role.findAll();
+    const roleMap = new Map<string, Role>();
+    for (const r of allRoles) {
+        roleMap.set(r.slug, r);
+    }
+
+    console.log(`Roles seeded successfully (${allRoles.length} roles available)`);
+    return roleMap;
 };

@@ -1,6 +1,6 @@
 import Tag from '@/models/blog/tag.model.js';
 
-export const seedTags = async (): Promise<void> => {
+export const seedTags = async (): Promise<Map<string, Tag>> => {
     const tags = [
         {
             name: 'Node.js',
@@ -60,8 +60,19 @@ export const seedTags = async (): Promise<void> => {
         },
     ];
 
-    await Tag.bulkCreate(tags as unknown as Partial<Tag>[], {
-        ignoreDuplicates: true,
-    });
-    console.log('Tags seeded successfully');
+    for (const t of tags) {
+        const existing = await Tag.findOne({ where: { slug: t.slug } });
+        if (!existing) {
+            await Tag.create(t);
+        }
+    }
+
+    const allTags = await Tag.findAll();
+    const tagMap = new Map<string, Tag>();
+    for (const t of allTags) {
+        tagMap.set(t.slug, t);
+    }
+
+    console.log(`Tags seeded successfully (${allTags.length} tags available)`);
+    return tagMap;
 };

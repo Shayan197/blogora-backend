@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 
 import sequelize from '@/config/db.config.js';
 import { nodeEnv } from '@/config/initial.config.js';
+import Role from '@/models/auth/role.model.js';
 import User from '@/models/auth/user.model.js';
 import { sentOTPEmail } from '@/utils/email.util.js';
 import { generateAccessToken, generateRefreshToken } from '@/utils/jwt.utils.js';
@@ -57,10 +58,33 @@ export const registerUser = async (req: Request, res: Response) => {
         const invalidPassword = validatePassword(password, confirmPassword);
         if (invalidPassword) return validationError(res, invalidPassword);
 
+        // Resolve default user role dynamically from database (never trust client roleId)
+        const defaultRoleSlug = process.env.DEFAULT_USER_ROLE || 'author';
+        let defaultRole = await Role.findOne({
+            where: { slug: defaultRoleSlug, isActive: true },
+        });
+
+        if (!defaultRole) {
+            defaultRole =
+                (await Role.findOne({ where: { slug: 'author', isActive: true } })) ||
+                (await Role.findOne({ where: { slug: 'subscriber', isActive: true } })) ||
+                (await Role.findOne({
+                    where: { isActive: true },
+                    order: [['priority', 'DESC']],
+                }));
+        }
+
+        if (!defaultRole) {
+            return validationError(
+                res,
+                'System configuration error: Default user role is not initialized. Please run database seeding.',
+            );
+        }
+
         const userData = {
             firstName: firstName,
             lastName: lastName,
-            roleId: 2,
+            roleId: defaultRole.id,
             gender: gender,
             email: email,
             otp: crypto.randomInt(100000, 999999),

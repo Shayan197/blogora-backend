@@ -87,6 +87,21 @@ export const getUserByUuid = async (req: Request, res: Response) => {
     }
 };
 
+// =================================== listRoles (Admin) ===================================
+export const listRoles = async (_req: Request, res: Response) => {
+    try {
+        const roles = await Role.findAll({
+            where: { isActive: true },
+            attributes: ['id', 'uuid', 'name', 'slug', 'description', 'priority', 'color'],
+            order: [['priority', 'ASC']],
+        });
+
+        return successOkWithData(res, { roles }, 'Roles fetched successfully');
+    } catch (error) {
+        return catchError(res, error);
+    }
+};
+
 // =================================== updateUserRole (Admin) ===================================
 export const updateUserRole = async (req: Request, res: Response) => {
     try {
@@ -96,9 +111,16 @@ export const updateUserRole = async (req: Request, res: Response) => {
             return reqBody.response;
         }
 
-        const { roleId } = req.body as { roleId: number };
+        const { roleId } = req.body as { roleId: number | string };
 
-        const targetRole = await Role.findByPk(roleId);
+        // Support both numeric roleId and role slug/identifier
+        let targetRole: Role | null = null;
+        if (typeof roleId === 'number' || !isNaN(Number(roleId))) {
+            targetRole = await Role.findByPk(Number(roleId));
+        } else if (typeof roleId === 'string') {
+            targetRole = await Role.findOne({ where: { slug: roleId } });
+        }
+
         if (!targetRole) {
             return validationError(res, 'Specified role does not exist');
         }
@@ -108,7 +130,12 @@ export const updateUserRole = async (req: Request, res: Response) => {
             return notFound(res, 'User not found');
         }
 
-        user.roleId = roleId;
+        // Prevent super-admin from demoting themselves
+        if (req.user && req.user.uuid === user.uuid && targetRole.slug !== 'super-admin') {
+            return validationError(res, 'Super administrators cannot demote their own account.');
+        }
+
+        user.roleId = targetRole.id;
         await user.save({ fields: ['roleId'] });
 
         return successOk(res, `User role updated to ${targetRole.name} successfully`);
@@ -138,6 +165,18 @@ export const updateUserStatus = async (req: Request, res: Response) => {
         const user = await User.findOne({ where: { uuid } });
         if (!user) {
             return notFound(res, 'User not found');
+        }
+
+        // Prevent admin from blocking or suspending their own account
+        if (
+            req.user &&
+            req.user.uuid === user.uuid &&
+            (status === 'blocked' || status === 'suspended')
+        ) {
+            return validationError(
+                res,
+                'Administrators cannot block or suspend their own account.',
+            );
         }
 
         user.status = status;

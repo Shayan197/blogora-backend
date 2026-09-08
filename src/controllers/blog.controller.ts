@@ -80,6 +80,8 @@ export const listBlogs = async (req: Request, res: Response) => {
             const authorUser = await User.findOne({ where: { uuid: author } });
             if (authorUser) {
                 whereCondition.authorId = authorUser.id;
+            } else {
+                whereCondition.authorId = -1;
             }
         }
 
@@ -94,6 +96,8 @@ export const listBlogs = async (req: Request, res: Response) => {
             });
             if (cat) {
                 whereCondition.categoryId = cat.id;
+            } else {
+                whereCondition.categoryId = -1;
             }
         }
 
@@ -108,6 +112,14 @@ export const listBlogs = async (req: Request, res: Response) => {
                     model: Tag,
                     as: 'tags',
                     where: { id: tagRecord.id },
+                    attributes: ['id', 'uuid', 'name', 'slug'],
+                    through: { attributes: [] },
+                };
+            } else {
+                includeClause[2] = {
+                    model: Tag,
+                    as: 'tags',
+                    where: { id: -1 },
                     attributes: ['id', 'uuid', 'name', 'slug'],
                     through: { attributes: [] },
                 };
@@ -267,9 +279,9 @@ export const getBlogBySlug = async (req: Request, res: Response) => {
                 return notFound(res, 'Blog story not found');
             }
         } else {
-            // Increment view count asynchronously
+            // Increment view count atomically to prevent race conditions
+            await blog.increment('viewsCount', { by: 1, silent: true });
             blog.viewsCount += 1;
-            await blog.save({ fields: ['viewsCount'], silent: true });
         }
 
         let isLikedByMe = false;

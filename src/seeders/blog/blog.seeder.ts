@@ -1,16 +1,65 @@
+import User from '@/models/auth/user.model.js';
 import Blog from '@/models/blog/blog.model.js';
 import BlogTag from '@/models/blog/blogTag.model.js';
+import Category from '@/models/blog/category.model.js';
+import Tag from '@/models/blog/tag.model.js';
 
-export const seedBlogs = async (): Promise<void> => {
-    const existingBlogs = await Blog.count();
-    if (existingBlogs > 0) {
-        return;
+export const seedBlogs = async (
+    userMap?: Map<string, User>,
+    categoryMap?: Map<string, Category>,
+    tagMap?: Map<string, Tag>,
+): Promise<void> => {
+    // Resolve users if not passed
+    let users = userMap;
+    if (!users || users.size === 0) {
+        const allUsers = await User.findAll();
+        users = new Map<string, User>();
+        for (const u of allUsers) {
+            users.set(u.email, u);
+        }
+    }
+
+    // Resolve categories if not passed
+    let categories = categoryMap;
+    if (!categories || categories.size === 0) {
+        const allCategories = await Category.findAll();
+        categories = new Map<string, Category>();
+        for (const c of allCategories) {
+            categories.set(c.slug, c);
+        }
+    }
+
+    // Resolve tags if not passed
+    let tags = tagMap;
+    if (!tags || tags.size === 0) {
+        const allTags = await Tag.findAll();
+        tags = new Map<string, Tag>();
+        for (const t of allTags) {
+            tags.set(t.slug, t);
+        }
+    }
+
+    // Fallback author if specific emails not found
+    const defaultAuthor = Array.from(users.values())[0] ?? (await User.findOne());
+    if (!defaultAuthor) {
+        throw new Error(
+            'Cannot seed blogs: No users found in database. Seed users before seeding blogs.',
+        );
+    }
+
+    // Fallback category if specific slugs not found
+    const defaultCategory = Array.from(categories.values())[0] ?? (await Category.findOne());
+    if (!defaultCategory) {
+        throw new Error(
+            'Cannot seed blogs: No categories found in database. Seed categories before seeding blogs.',
+        );
     }
 
     const sampleBlogs = [
         {
-            authorId: 1, // Ali (Super Admin)
-            categoryId: 1, // Software Engineering
+            authorEmail: 'ali@email.com',
+            categorySlug: 'software-engineering',
+            tagSlugs: ['nodejs', 'typescript', 'postgresql'],
             title: 'Mastering TypeScript in High-Traffic Production Backends',
             slug: 'mastering-typescript-in-high-traffic-production-backends',
             subtitle:
@@ -29,8 +78,9 @@ In this deep dive, we explore how to configure clean path aliases, enforce compi
             isPremium: false,
         },
         {
-            authorId: 2, // Hania (Admin)
-            categoryId: 2, // Web Development
+            authorEmail: 'hania@email.com',
+            categorySlug: 'web-development',
+            tagSlugs: ['nodejs', 'sequelize', 'rest-api'],
             title: 'Building Resilient REST APIs with Node.js, Express & Sequelize',
             slug: 'building-resilient-rest-apis-with-nodejs-express-sequelize',
             subtitle:
@@ -49,8 +99,9 @@ Learn how to leverage PostgreSQL connection pooling, fast JWT verification, and 
             isPremium: false,
         },
         {
-            authorId: 4, // Hania (Author)
-            categoryId: 3, // Artificial Intelligence
+            authorEmail: 'hania4amir@email.com',
+            categorySlug: 'artificial-intelligence',
+            tagSlugs: ['ai-llm'],
             title: 'The Evolution of AI Agents in Modern Software Engineering',
             slug: 'the-evolution-of-ai-agents-in-modern-software-engineering',
             subtitle:
@@ -68,19 +119,50 @@ Learn how to leverage PostgreSQL connection pooling, fast JWT verification, and 
         },
     ];
 
-    const createdBlogs = await Blog.bulkCreate(sampleBlogs as unknown as Partial<Blog>[]);
+    for (const b of sampleBlogs) {
+        const author = users.get(b.authorEmail) ?? defaultAuthor;
+        const category = categories.get(b.categorySlug) ?? defaultCategory;
 
-    // Associate tags with blogs
-    const blogTagsData = [
-        { blogId: createdBlogs[0]!.id, tagId: 1 }, // Blog 1 -> Node.js
-        { blogId: createdBlogs[0]!.id, tagId: 2 }, // Blog 1 -> TypeScript
-        { blogId: createdBlogs[0]!.id, tagId: 3 }, // Blog 1 -> PostgreSQL
-        { blogId: createdBlogs[1]!.id, tagId: 1 }, // Blog 2 -> Node.js
-        { blogId: createdBlogs[1]!.id, tagId: 4 }, // Blog 2 -> Sequelize
-        { blogId: createdBlogs[1]!.id, tagId: 6 }, // Blog 2 -> REST API
-        { blogId: createdBlogs[2]!.id, tagId: 8 }, // Blog 3 -> AI & LLM
-    ];
+        let blog = await Blog.findOne({ where: { slug: b.slug } });
+        if (!blog) {
+            blog = await Blog.create({
+                authorId: author.id,
+                categoryId: category.id,
+                title: b.title,
+                slug: b.slug,
+                subtitle: b.subtitle,
+                content: b.content,
+                coverImage: b.coverImage,
+                readingTime: b.readingTime,
+                viewsCount: b.viewsCount,
+                likesCount: b.likesCount,
+                commentsCount: b.commentsCount,
+                status: b.status,
+                publishedAt: b.publishedAt,
+                isFeatured: b.isFeatured,
+                isPremium: b.isPremium,
+            });
+        } else {
+            // Keep author and category synced to existing real parent records
+            blog.authorId = author.id;
+            blog.categoryId = category.id;
+            await blog.save({ fields: ['authorId', 'categoryId'] });
+        }
 
-    await BlogTag.bulkCreate(blogTagsData, { ignoreDuplicates: true });
-    console.log('Sample blogs & tags seeded successfully');
+        // Associate tags dynamically
+        for (const tagSlug of b.tagSlugs) {
+            const tagRecord =
+                tags.get(tagSlug) ?? (await Tag.findOne({ where: { slug: tagSlug } }));
+            if (tagRecord) {
+                const existingLink = await BlogTag.findOne({
+                    where: { blogId: blog.id, tagId: tagRecord.id },
+                });
+                if (!existingLink) {
+                    await BlogTag.create({ blogId: blog.id, tagId: tagRecord.id });
+                }
+            }
+        }
+    }
+
+    console.log(`Sample blogs & tags seeded successfully (${sampleBlogs.length} stories ready)`);
 };

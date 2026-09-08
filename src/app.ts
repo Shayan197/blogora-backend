@@ -63,10 +63,10 @@ const corsOptions: cors.CorsOptions = {
                     normalizedOrigin.startsWith('http://127.0.0.1:')));
 
         if (isAllowed) {
-            console.log(`✅ CORS Allowed: ${normalizedOrigin}`);
+            // console.log(`✅ CORS Allowed: ${normalizedOrigin}`);
             callback(null, true);
         } else {
-            console.log(`❌ CORS Denied: ${normalizedOrigin}`);
+            // console.log(`❌ CORS Denied: ${normalizedOrigin}`);
             callback(null, false);
         }
     },

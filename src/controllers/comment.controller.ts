@@ -235,9 +235,12 @@ export const deleteComment = async (req: Request, res: Response) => {
     }
 
     const isOwner = comment.userId === req.user.id;
-    const isModeratorOrAdmin = req.user.role && req.user.role.priority <= 5;
+    const blog = await Blog.findByPk(comment.blogId, { attributes: ['authorId'] });
+    const isBlogAuthor = blog?.authorId === req.user.id;
+    const userRoleSlug = req.user.role?.slug?.toLowerCase() || '';
+    const isModeratorOrAdmin = ['super-admin', 'admin', 'moderator'].includes(userRoleSlug);
 
-    if (!isOwner && !isModeratorOrAdmin) {
+    if (!isOwner && !isBlogAuthor && !isModeratorOrAdmin) {
         return forbiddenError(res, 'You do not have permission to delete this comment');
     }
 
