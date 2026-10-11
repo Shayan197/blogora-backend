@@ -78,7 +78,7 @@ In this deep dive, we explore how to configure clean path aliases, enforce compi
             isPremium: false,
         },
         {
-            authorEmail: 'hania@email.com',
+            authorEmail: 'soniahameed@email.com',
             categorySlug: 'web-development',
             tagSlugs: ['nodejs', 'sequelize', 'rest-api'],
             title: 'Building Resilient REST APIs with Node.js, Express & Sequelize',
@@ -99,7 +99,7 @@ Learn how to leverage PostgreSQL connection pooling, fast JWT verification, and 
             isPremium: false,
         },
         {
-            authorEmail: 'hania4amir@email.com',
+            authorEmail: 'hadiaamir@email.com',
             categorySlug: 'artificial-intelligence',
             tagSlugs: ['ai-llm'],
             title: 'The Evolution of AI Agents in Modern Software Engineering',

@@ -1,3 +1,5 @@
+import { Op } from 'sequelize';
+
 import Profile from '@/models/auth/profile.model.js';
 import Role from '@/models/auth/role.model.js';
 import User from '@/models/auth/user.model.js';
@@ -136,7 +138,13 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
             throw new Error(`Cannot seed user ${u.email}: No role available`);
         }
 
-        let user = await User.findOne({ where: { email: u.email } });
+        let user = await User.findOne({
+            where: {
+                [Op.or]: [{ email: u.email }, ...(u.phone ? [{ phone: u.phone }] : [])],
+            },
+            paranoid: false,
+        });
+
         if (!user) {
             user = await User.create({
                 roleId: targetRole.id,
@@ -154,10 +162,23 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
                 isActive: true,
             });
         } else {
+            if (user.deletedAt) {
+                await user.restore();
+            }
             user.roleId = targetRole.id;
+            user.firstName = u.firstName;
+            user.lastName = u.lastName;
+            user.email = u.email;
+            user.phone = u.phone;
+            user.password = hashedPassword;
+            user.gender = u.gender;
+            user.status = u.status;
+            user.experience = u.experience;
+            user.skills = u.skills;
+            user.preferences = u.preferences;
             user.isVerified = true;
             user.isActive = true;
-            await user.save({ fields: ['roleId', 'isVerified', 'isActive'] });
+            await user.save();
         }
 
         userMap.set(user.email, user);
@@ -171,6 +192,10 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
                 bio: u.bio,
                 websiteUrl: 'https://blogora.dev',
             });
+        } else {
+            existingProfile.headline = u.headline;
+            existingProfile.bio = u.bio;
+            await existingProfile.save();
         }
     }
 
