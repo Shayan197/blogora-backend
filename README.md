@@ -282,6 +282,21 @@ npm run seed
 
 ---
 
+## 🐳 Docker Containerization & Compose
+
+Blogora Backend includes a production-grade multi-stage Docker containerization pipeline:
+
+```bash
+# Build production Docker image
+docker build -t blogora-backend .
+
+# Run backend container
+docker run -p 5000:5000 --env-file .env blogora-backend
+
+# Or launch with Docker Compose
+docker compose up -d backend
+```
+
 ## 🧪 Scripts & Quality Assurance
 
 | Script | Command | Purpose |
@@ -299,4 +314,4 @@ npm run seed
 ## 👨‍💻 Author & Maintainer
 **Shayan Bukhari**  
 * Full-Stack Software Engineer  
-* GitHub: [@shayanbukhari](https://github.com/shayanbukhari)
+* GitHub: [@Shayan197](https://github.com/Shayan197)

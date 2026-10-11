@@ -20,24 +20,6 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
 
     const usersToSeed = [
         {
-            roleSlug: 'super-admin',
-            firstName: 'Shayan',
-            lastName: 'Bukhari',
-            email: 'shayanbukhari12345@gmail.com',
-            phone: '03001234567',
-            passwordPlain: 'Asdf123@',
-            gender: 'male' as const,
-            status: 'active' as const,
-            experience: 5,
-            skills: ['Node.js', 'Express.js', 'PostgreSQL', 'TypeScript', 'React', 'Next.js'],
-            preferences: {
-                theme: 'dark',
-                language: 'en',
-            },
-            headline: 'Super Admin & Founder',
-            bio: 'Founder and Super Administrator of Blogora platform.',
-        },
-        {
             roleSlug: 'author',
             firstName: 'Ali',
             lastName: 'Khan',

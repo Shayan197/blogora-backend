@@ -36,17 +36,26 @@ npm run format:check
 npm run format
 ```
 
+### Docker Containerization
+```bash
+# Build production image
+docker build -t blogora-backend .
+
+# Run container
+docker run -p 5000:5000 --env-file .env blogora-backend
+
+# Launch via Docker Compose
+docker compose up -d backend
+```
+
 ---
 
-## 👑 Super Admin & Seed Credentials
+## 👑 Super Admin & Access Control
 
-| Property | Value |
-| :--- | :--- |
-| **Super Admin Name** | Shayan Bukhari |
-| **Email** | `shayanbukhari12345@gmail.com` |
-| **Password** | `Asdf123@` |
-| **Role Slug** | `super-admin` (Priority 1) |
-| **Author Account** | `ali@email.com` / `12345678` |
+- **Governance State**: Super Admin account is provisioned securely in the production Neon PostgreSQL database.
+- **Security Policy**: Production administrative credentials are NEVER committed to git repositories or markdown documentation.
+- **Local Development**: Configure initial administrative accounts via environment variables or database seeding.
+- **Seed Author Account**: `ali@email.com` / `12345678` (For development and testing)
 
 ---
 
