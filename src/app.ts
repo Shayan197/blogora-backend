@@ -4,6 +4,9 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// =========================================
+//             Code Imports
+// =========================================
 import chalk from 'chalk';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -13,9 +16,6 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-// =========================================
-//             Code Imports
-// =========================================
 import sequelize, { connectDB } from '@/config/db.config.js';
 import { nodeEnv, port, allowedOrigins } from '@/config/initial.config.js';
 import '@/models/models.js';

@@ -231,8 +231,10 @@ blogora-backend/
 | Method | Endpoint | Description | Permissions |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/users` | List platform users | Super Admin / Admin |
+| `GET` | `/api/users/analytics/overview` | Platform analytics & user demographics | Super Admin / Admin |
 | `PATCH`| `/api/users/:uuid/role` | Update user role | Super Admin |
 | `PATCH`| `/api/users/:uuid/status` | Ban / Activate user account | Super Admin / Admin |
+| `PATCH`| `/api/users/:uuid/verify` | Manually verify user account | Super Admin / Admin |
 | `POST` | `/api/categories` | Create blog category | Admin / Editor |
 | `POST` | `/api/tags` | Create blog tag | Admin / Author |
 

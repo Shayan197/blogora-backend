@@ -375,6 +375,13 @@ export const getUser = async (req: Request, res: Response) => {
         const user = await User.findOne({
             where: { uuid: req.userUid },
             attributes: { exclude: ['password', 'otp', 'otpCount', 'deletedAt'] },
+            include: [
+                {
+                    model: Role,
+                    as: 'role',
+                    attributes: ['id', 'uuid', 'name', 'slug', 'priority', 'color'],
+                },
+            ],
         });
         if (!user) return unauthorizedError(res, 'Invalid token');
         return successOkWithData(res, { user }, 'User fetched successfully');

@@ -1,9 +1,9 @@
 import chalk from 'chalk';
 
 import sequelize, { connectDB } from '@/config/db.config.js';
-import '@/models/models.js';
-import '@/models/associations.js';
 import { seedRoles, seedUsers, seedCategories, seedTags, seedBlogs } from '@/seeders/index.js';
+import '@/models/associations.js';
+import '@/models/models.js';
 
 const runAllSeeders = async () => {
     try {

@@ -1,4 +1,5 @@
 // import required modules and configuration
+
 import express from 'express';
 
 import * as authCtrl from '@/controllers/auth.controller.js';

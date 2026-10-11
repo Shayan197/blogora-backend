@@ -192,3 +192,79 @@ export const updateUserStatus = async (req: Request, res: Response) => {
         return catchWithSequelizeValidationError(res, error);
     }
 };
+
+// =================================== verifyUserManually (Super Admin) ===================================
+export const verifyUserManually = async (req: Request, res: Response) => {
+    try {
+        const { uuid } = req.params;
+        const user = await User.findOne({ where: { uuid } });
+        if (!user) {
+            return notFound(res, 'User not found');
+        }
+
+        user.isVerified = true;
+        user.isActive = true;
+        user.otp = null;
+        await user.save({ fields: ['isVerified', 'isActive', 'otp'] });
+
+        return successOk(res, `User ${user.email} verified successfully`);
+    } catch (error) {
+        return catchError(res, error);
+    }
+};
+
+// =================================== getAdminAnalytics (Dashboard) ===================================
+export const getAdminAnalytics = async (_req: Request, res: Response) => {
+    try {
+        const totalUsers = await User.count();
+        const activeUsers = await User.count({ where: { status: 'active', isActive: true } });
+        const blockedUsers = await User.count({ where: { status: 'blocked' } });
+        const suspendedUsers = await User.count({ where: { status: 'suspended' } });
+        const pendingUsers = await User.count({ where: { status: 'pending' } });
+        const verifiedUsers = await User.count({ where: { isVerified: true } });
+        const unverifiedUsers = totalUsers - verifiedUsers;
+
+        // Gender stats
+        const maleUsers = await User.count({ where: { gender: 'male' } });
+        const femaleUsers = await User.count({ where: { gender: 'female' } });
+        const otherGenderUsers = await User.count({ where: { gender: 'other' } });
+
+        // Role breakdown
+        const roles = await Role.findAll({ attributes: ['id', 'name', 'slug', 'color'] });
+        const roleBreakdown = await Promise.all(
+            roles.map(async (r) => {
+                const count = await User.count({ where: { roleId: r.id } });
+                return {
+                    name: r.name,
+                    slug: r.slug,
+                    color: r.color,
+                    count,
+                };
+            }),
+        );
+
+        return successOkWithData(
+            res,
+            {
+                metrics: {
+                    totalUsers,
+                    activeUsers,
+                    blockedUsers,
+                    suspendedUsers,
+                    pendingUsers,
+                    verifiedUsers,
+                    unverifiedUsers,
+                },
+                demographics: {
+                    male: maleUsers,
+                    female: femaleUsers,
+                    other: otherGenderUsers,
+                },
+                roles: roleBreakdown,
+            },
+            'Admin analytics fetched successfully',
+        );
+    } catch (error) {
+        return catchError(res, error);
+    }
+};
