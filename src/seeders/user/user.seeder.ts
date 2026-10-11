@@ -21,6 +21,24 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
     const usersToSeed = [
         {
             roleSlug: 'super-admin',
+            firstName: 'Shayan',
+            lastName: 'Bukhari',
+            email: 'shayanbukhari12345@gmail.com',
+            phone: '03001234567',
+            passwordPlain: 'Asdf123@',
+            gender: 'male' as const,
+            status: 'active' as const,
+            experience: 5,
+            skills: ['Node.js', 'Express.js', 'PostgreSQL', 'TypeScript', 'React', 'Next.js'],
+            preferences: {
+                theme: 'dark',
+                language: 'en',
+            },
+            headline: 'Super Admin & Founder',
+            bio: 'Founder and Super Administrator of Blogora platform.',
+        },
+        {
+            roleSlug: 'author',
             firstName: 'Ali',
             lastName: 'Khan',
             email: 'ali@email.com',
@@ -34,8 +52,8 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
                 theme: 'dark',
                 language: 'en',
             },
-            headline: 'Super Admin & Lead Systems Architect',
-            bio: 'Lead engineer and systems architect building resilient backend services and developer platforms.',
+            headline: 'Systems Architect & Author',
+            bio: 'Lead engineer building resilient backend services and developer platforms.',
         },
         {
             roleSlug: 'admin',
@@ -129,7 +147,6 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
         },
     ];
 
-    const hashedPassword = await hashPassword('12345678');
     const userMap = new Map<string, User>();
 
     for (const u of usersToSeed) {
@@ -137,6 +154,8 @@ export const seedUsers = async (roleMap?: Map<string, Role>): Promise<Map<string
         if (!targetRole) {
             throw new Error(`Cannot seed user ${u.email}: No role available`);
         }
+
+        const hashedPassword = await hashPassword(u.passwordPlain);
 
         let user = await User.findOne({
             where: {
